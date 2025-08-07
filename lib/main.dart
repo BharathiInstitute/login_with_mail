@@ -23,6 +23,8 @@ void main() async {
 
 // The root widget of the app
 class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key); // Add key parameter
+
   @override
   Widget build(BuildContext context) {
     // Returns a MaterialApp widget (top-level app container)

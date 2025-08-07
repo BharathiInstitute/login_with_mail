@@ -1,119 +1,199 @@
-import 'package:flutter/material.dart'; // Import Flutter Material UI
-import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth package
-import 'register_screen.dart'; // Import the RegisterScreen
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key}); // Use super parameter
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Controller for the email input field
   final TextEditingController emailCtrl = TextEditingController();
-  // Controller for the password input field
   final TextEditingController passCtrl = TextEditingController();
 
-  bool isLoading = false; // Loading state for the login process
+  bool isLoading = false;
 
   // Function to handle login logic
   void login() async {
-    setState(() => isLoading = true); // Set loading to true
+    setState(() => isLoading = true);
 
     try {
-      // Attempt to sign in with email and password using Firebase Auth
       await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: emailCtrl.text.trim(), // Get and trim email input
-        password: passCtrl.text.trim(), // Get and trim password input
+        email: emailCtrl.text.trim(),
+        password: passCtrl.text.trim(),
       );
-      // Show success message if login is successful
+      if (!mounted) return; // Fix context usage after await
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('✅ Login successful')),
+        const SnackBar(content: Text('✅ Login successful')),
       );
     } on FirebaseAuthException catch (e) {
-      // Show error message if login fails
+      if (!mounted) return;
       String message = e.message ?? 'Login failed';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('❌ $message')),
       );
     } finally {
-      setState(() => isLoading = false); // Set loading to false
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   // Function to handle password reset
   void resetPassword() async {
     if (emailCtrl.text.trim().isEmpty) {
-      // Check if the email field is empty
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('⚠️ Enter your email first')),
+        const SnackBar(content: Text('⚠️ Enter your email first')),
       );
       return;
     }
 
     try {
-      // Send password reset email
       await FirebaseAuth.instance.sendPasswordResetEmail(
         email: emailCtrl.text.trim(),
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('📧 Reset link sent to your email')),
+        const SnackBar(content: Text('📧 Reset link sent to your email')),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('❌ Failed to send reset email: $e')),
       );
     }
   }
 
-  // Function to navigate to the registration screen
-  void goToRegister() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => RegisterScreen()),
+  // Show registration dialog as a popup
+  void showRegisterDialog() {
+    final regEmailCtrl = TextEditingController();
+    final regPassCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Register'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: regEmailCtrl,
+                decoration: const InputDecoration(labelText: 'Email'),
+              ),
+              TextField(
+                controller: regPassCtrl,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                    email: regEmailCtrl.text.trim(),
+                    password: regPassCtrl.text.trim(),
+                  );
+                  if (!mounted) return;
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('✅ Registered successfully')),
+                  );
+                } on FirebaseAuthException catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('❌ ${e.message ?? "Registration failed"}')),
+                  );
+                }
+              },
+              child: const Text('Register'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Show forgot password dialog as a popup
+  void showForgotPasswordDialog() {
+    final forgotEmailCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Forgot Password'),
+          content: TextField(
+            controller: forgotEmailCtrl,
+            decoration: const InputDecoration(labelText: 'Enter your email'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  await FirebaseAuth.instance.sendPasswordResetEmail(
+                    email: forgotEmailCtrl.text.trim(),
+                  );
+                  if (!mounted) return;
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('📧 Reset link sent to your email')),
+                  );
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('❌ Failed to send reset email: $e')),
+                  );
+                }
+              },
+              child: const Text('Send'),
+            ),
+          ],
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Build the UI for the login screen
     return Scaffold(
-      appBar: AppBar(title: Text('Firebase Login')), // App bar with title
+      appBar: AppBar(title: const Text('Firebase Login')),
       body: Padding(
-        padding: const EdgeInsets.all(20), // Add padding around the content
+        padding: const EdgeInsets.all(20),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center, // Center the column vertically
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Email input field
             TextField(
-              controller: emailCtrl, // Connects to emailCtrl
-              keyboardType: TextInputType.emailAddress, // Keyboard type for email
-              decoration: InputDecoration(labelText: 'Email'), // Shows 'Email' label
+              controller: emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(labelText: 'Email'),
             ),
-            // Password input field
             TextField(
-              controller: passCtrl, // Connects to passCtrl
-              obscureText: true, // Hides the password text
-              decoration: InputDecoration(labelText: 'Password'), // Shows 'Password' label
+              controller: passCtrl,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Password'),
             ),
-            SizedBox(height: 20), // Adds vertical space
-            // Show loading indicator or login button
+            const SizedBox(height: 20),
             isLoading
-                ? CircularProgressIndicator() // Loading indicator
+                ? const CircularProgressIndicator()
                 : ElevatedButton(
-                    onPressed: login, // Calls login() when pressed
-                    child: Text('Login'), // Button text
+                    onPressed: login,
+                    child: const Text('Login'),
                   ),
-            // Forgot Password button
             TextButton(
-              onPressed: resetPassword, // Calls resetPassword() when pressed
-              child: Text('Forgot Password?'), // Button text
+              onPressed: showForgotPasswordDialog,
+              child: const Text('Forgot Password?'),
             ),
-            // Register button
             TextButton(
-              onPressed: goToRegister, // Calls goToRegister() when pressed
-              child: Text("Don't have an account? Register"), // Button text
+              onPressed: showRegisterDialog,
+              child: const Text("Register"),
             ),
           ],
         ),
